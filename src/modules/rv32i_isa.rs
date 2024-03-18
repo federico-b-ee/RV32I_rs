@@ -1,4 +1,6 @@
 use crate::modules::utils;
+
+#[derive(Debug, PartialEq)]
 pub enum InstrType {
     AluRtype,
     AluItype,
@@ -26,6 +28,18 @@ struct Rv32iIsa {
 
 #[allow(dead_code)]
 impl Rv32iIsa {
+    pub fn new(instruction: u32) -> Rv32iIsa {
+        Rv32iIsa {
+            i_instruction: instruction,
+            o_instrtype: InstrType::Illegal,
+            o_imm: 0,
+            o_rs1: 0,
+            o_rs2: 0,
+            o_rd: 0,
+            o_funct3: 0,
+            o_funct7: 0,
+        }
+    }
     fn parse_instr(&mut self) {
         let bits_instruction = utils::u32_to_bitvec(self.i_instruction);
 
@@ -163,5 +177,31 @@ mod tests {
             Rv32iIsa::parse_imm_utype(&bits),
             0b00000000_01010011_10110000_00000000u32
         );
+    }
+
+    #[test]
+    fn test_integration_test1() {
+        // sub x5, x1, x2
+        let mut isa = Rv32iIsa::new(0x402082b3);
+
+        isa.parse_instr();
+        assert_eq!(isa.o_instrtype, InstrType::AluRtype);
+        assert_eq!(isa.o_rs1, 1u8);
+        assert_eq!(isa.o_rs2, 2u8);
+        assert_eq!(isa.o_rd, 5u8);
+        assert_eq!(isa.o_funct3, 0x0);
+        assert_eq!(isa.o_funct7, 0x20);
+    }
+    #[test]
+    fn test_integration_test2() {
+        // beq x5, x2, 74
+        let mut isa = Rv32iIsa::new(0x04228563);
+
+        isa.parse_instr();
+        assert_eq!(isa.o_instrtype, InstrType::BranchBtype);
+        assert_eq!(isa.o_imm, 74u32);
+        assert_eq!(isa.o_rs1, 5u8);
+        assert_eq!(isa.o_rs2, 2u8);
+        assert_eq!(isa.o_funct3, 0x0);
     }
 }
