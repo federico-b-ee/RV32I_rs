@@ -69,9 +69,11 @@ impl Alu {
             0x5 => {
                 self.o_out = {
                     if funct7 == 0x20 {
-                        self.i_in1 >> shamt
-                    } else {
+                        // arithmetic shift right
                         (self.i_in1 as i32 >> shamt) as u32
+                    } else {
+                        // logical shift right
+                        self.i_in1 >> shamt
                     }
                 }
             }
@@ -84,5 +86,28 @@ impl Alu {
         self.o_lt = (self.i_in1 as i32) < (self.i_in2 as i32);
         self.o_ltu = self.i_in1 < self.i_in2;
         self.o_alu_add = alu_add;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_alu_exec() {
+        let mut alu = Alu::new();
+
+        // Test case 1
+        // srai x1, x2, 4
+        // arithmetic shift right
+        let in1 = 0xFFFF_0000;
+        alu.exec(in1, 3, 0x5, 0x20, 0x40415093);
+        assert_eq!(alu.o_out, ((in1 as i32) >> 4) as u32);
+
+        // Test case 2
+        // srli x1, x2, 4
+        // logical shift right
+        alu.exec(in1, 2, 0x5, 0x00, 0x00415093);
+        assert_eq!(alu.o_out, in1 >> 4);
     }
 }
