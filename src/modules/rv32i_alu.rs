@@ -37,31 +37,19 @@ impl Alu {
         let alu_add = self.i_in1.wrapping_add(self.i_in2);
         let alu_sub = self.i_in1.wrapping_sub(self.i_in2);
 
-        self.o_eq = alu_sub == 0;
-        self.o_ltu = utils::u32_to_bitvec(alu_sub)[31] != 0;
-
-        let in1_32 = utils::u32_to_bitvec(in1)[30];
-        let in2_32 = utils::u32_to_bitvec(in2)[30];
-
-        self.o_lt = if (in1_32 ^ in2_32) != 0 {
-            in1_32 != 0
-        } else {
-            utils::u32_to_bitvec(alu_sub)[31] != 0
-        };
-
         let mut zeroes = vec![0; 31];
         match funct3 {
             0x0 => self.o_out = if funct7 == 0x20 { alu_sub } else { alu_add },
             0x1 => self.o_out = self.i_in1 << shamt,
             0x2 => {
                 self.o_out = {
-                    zeroes.push(self.o_lt as u32);
+                    zeroes.push(self.o_lt as u8);
                     utils::bitvec_to_u32(&zeroes)
                 }
             }
             0x3 => {
                 self.o_out = {
-                    zeroes.push(self.o_ltu as u32);
+                    zeroes.push(self.o_ltu as u8);
                     utils::bitvec_to_u32(&zeroes)
                 }
             }
@@ -94,7 +82,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_alu_exec() {
+    fn test_shift() {
         let mut alu = Alu::new();
 
         // Test case 1
@@ -109,5 +97,41 @@ mod tests {
         // logical shift right
         alu.exec(in1, 2, 0x5, 0x00, 0x00415093);
         assert_eq!(alu.o_out, in1 >> 4);
+    }
+
+    #[test]
+    fn test_add() {
+        let mut alu = Alu::new();
+
+        // Test case 1
+        // add x3, x1, x2
+        let in1: u32 = 0xFFFF_FFF4;
+        let in2: u32 = 0x0000_000F;
+        // 0xFFFF_FFF4 + 0x0000_000F = 0x0000_0003
+        // in1.wrapping_add(in2) = 0x0000_0003
+        alu.exec(in1, in2, 0x0, 0x00, 0x002081b3);
+        assert_eq!(alu.o_out, 3u32);
+
+        // Test case 2
+        // addi x1, x2, 125
+        let in1 = 50;
+        let in2 = -125i32 as u32;
+        alu.exec(in1, in2, 0x0, 0x00, 0x0000_0000);
+        assert_eq!(alu.o_out, -75i32 as u32);
+    }
+
+    #[test]
+    fn test_lt_ltu() {
+        let mut alu = Alu::new();
+
+        alu.exec(2, 4, 0x0, 0x00, 0x0000_0000);
+        assert!(alu.o_lt);
+
+        alu.exec((-2i32) as u32, 4, 0x0, 0x00, 0x0000_0000);
+        // -2 > 4 -> false
+        assert!(!alu.o_ltu);
+
+        alu.exec((-2i32) as u32, 4, 0x0, 0x00, 0x0000_0000);
+        assert!(alu.o_lt);
     }
 }

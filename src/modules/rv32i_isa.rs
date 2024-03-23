@@ -79,7 +79,7 @@ impl Rv32iIsa {
         self.o_funct7 = utils::bitvec_to_u32(&bits_instruction[25..=31]) as u8;
     }
 
-    fn parse_imm_itype(bits: &[u32]) -> u32 {
+    fn parse_imm_itype(bits: &[u8]) -> u32 {
         let mut imm_bitvec = Vec::new();
         imm_bitvec.extend_from_slice(&bits[20..=30]);
         imm_bitvec.extend_from_slice(&[bits[31]; 21]);
@@ -87,7 +87,7 @@ impl Rv32iIsa {
         utils::bitvec_to_u32(&imm_bitvec)
     }
 
-    fn parse_imm_stype(bits: &[u32]) -> u32 {
+    fn parse_imm_stype(bits: &[u8]) -> u32 {
         let mut imm_bitvec = Vec::new();
         imm_bitvec.extend_from_slice(&bits[7..=11]);
         imm_bitvec.extend_from_slice(&bits[25..=30]);
@@ -96,9 +96,9 @@ impl Rv32iIsa {
         utils::bitvec_to_u32(&imm_bitvec)
     }
 
-    fn parse_imm_btype(bits: &[u32]) -> u32 {
+    fn parse_imm_btype(bits: &[u8]) -> u32 {
         let mut imm_bitvec = Vec::new();
-        imm_bitvec.push(0u32);
+        imm_bitvec.push(0u8);
         imm_bitvec.extend_from_slice(&bits[8..=11]);
         imm_bitvec.extend_from_slice(&bits[25..=30]);
         imm_bitvec.push(bits[7]);
@@ -107,9 +107,9 @@ impl Rv32iIsa {
         utils::bitvec_to_u32(&imm_bitvec)
     }
 
-    fn parse_imm_jtype(bits: &[u32]) -> u32 {
+    fn parse_imm_jtype(bits: &[u8]) -> u32 {
         let mut imm_bitvec = Vec::new();
-        imm_bitvec.push(0u32);
+        imm_bitvec.push(0u8);
         imm_bitvec.extend_from_slice(&bits[21..=30]);
         imm_bitvec.push(bits[20]);
         imm_bitvec.extend_from_slice(&bits[12..=19]);
@@ -118,9 +118,9 @@ impl Rv32iIsa {
         utils::bitvec_to_u32(&imm_bitvec)
     }
 
-    fn parse_imm_utype(bits: &[u32]) -> u32 {
+    fn parse_imm_utype(bits: &[u8]) -> u32 {
         let mut imm_bitvec = Vec::new();
-        imm_bitvec.extend_from_slice(&[0u32; 12]);
+        imm_bitvec.extend_from_slice(&[0u8; 12]);
         imm_bitvec.extend_from_slice(&bits[12..=31]);
 
         utils::bitvec_to_u32(&imm_bitvec)
@@ -171,7 +171,7 @@ mod tests {
 
         let mut imm_bitvec = Vec::new();
         imm_bitvec.extend_from_slice(&bits[12..=31]);
-        imm_bitvec.extend_from_slice(&[0u32; 12]);
+        imm_bitvec.extend_from_slice(&[0u8; 12]);
 
         assert_eq!(
             Rv32iIsa::parse_imm_utype(&bits),
