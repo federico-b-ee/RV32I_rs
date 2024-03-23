@@ -1,18 +1,18 @@
 use crate::modules::utils;
-struct Alu {
-    i_in1: u32,
-    i_in2: u32,
-    o_out: u32,
-    o_eq: bool,
-    o_lt: bool,
-    o_ltu: bool,
-    o_alu_add: u32,
+pub struct Rv32iAlu {
+    pub i_in1: u32,
+    pub i_in2: u32,
+    pub o_out: u32,
+    pub o_eq: bool,
+    pub o_lt: bool,
+    pub o_ltu: bool,
+    pub o_alu_add: u32,
 }
 
 #[allow(dead_code)]
-impl Alu {
-    pub fn new() -> Alu {
-        Alu {
+impl Rv32iAlu {
+    pub fn new() -> Rv32iAlu {
+        Rv32iAlu {
             i_in1: 0,
             i_in2: 0,
             o_out: 0,
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_shift() {
-        let mut alu = Alu::new();
+        let mut alu = Rv32iAlu::new();
 
         // Test case 1
         // srai x1, x2, 4
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let mut alu = Alu::new();
+        let mut alu = Rv32iAlu::new();
 
         // Test case 1
         // add x3, x1, x2
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_lt_ltu() {
-        let mut alu = Alu::new();
+        let mut alu = Rv32iAlu::new();
 
         alu.exec(2, 4, 0x0, 0x00, 0x0000_0000);
         assert!(alu.o_lt);

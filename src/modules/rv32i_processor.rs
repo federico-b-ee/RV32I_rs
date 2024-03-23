@@ -1,11 +1,15 @@
+use crate::modules::rv32i_alu;
+use crate::modules::rv32i_isa;
+use crate::modules::utils;
 #[allow(dead_code)]
-struct Rv32iProcessor {
+pub struct Rv32iProcessor {
     registers: Vec<u32>,
     pc: u32,
-    instr: u32,
     program: Vec<u32>,
     memory: Vec<u32>,
     state: State,
+    isa: rv32i_isa::Rv32iIsa,
+    alu: rv32i_alu::Rv32iAlu,
 }
 
 enum State {
@@ -23,15 +27,17 @@ impl Rv32iProcessor {
             program,
             memory,
             pc: 0,
-            instr: 0,
             state: State::Fetch,
+            isa: rv32i_isa::Rv32iIsa::new(0),
+            alu: rv32i_alu::Rv32iAlu::new(),
         }
     }
 
     fn exec(&mut self) {
         match self.state {
             State::Fetch => {
-                self.instr = self.program[self.pc as usize];
+                self.isa.i_instruction = self.program[self.pc as usize];
+
                 self.state = State::Execute;
             }
             State::Execute => {

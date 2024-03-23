@@ -15,15 +15,15 @@ pub enum InstrType {
     Illegal,
 }
 
-struct Rv32iIsa {
-    i_instruction: u32,
-    o_instrtype: InstrType,
-    o_imm: u32,
-    o_rs1: u8,
-    o_rs2: u8,
-    o_rd: u8,
-    o_funct3: u8,
-    o_funct7: u8,
+pub struct Rv32iIsa {
+    pub i_instruction: u32,
+    pub o_instrtype: InstrType,
+    pub o_imm: u32,
+    pub o_rs1: u8,
+    pub o_rs2: u8,
+    pub o_rd: u8,
+    pub o_funct3: u8,
+    pub o_funct7: u8,
 }
 
 #[allow(dead_code)]
