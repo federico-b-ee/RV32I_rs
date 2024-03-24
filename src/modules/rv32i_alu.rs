@@ -109,7 +109,7 @@ mod tests {
         let in2: u32 = 0x0000_000F;
         // 0xFFFF_FFF4 + 0x0000_000F = 0x0000_0003
         // in1.wrapping_add(in2) = 0x0000_0003
-        alu.exec(in1, in2, 0x0, 0x00, 0x002081b3);
+        alu.exec(in1, in2, 0x0, 0x00, 0x0000_0000);
         assert_eq!(alu.o_out, 3u32);
 
         // Test case 2
