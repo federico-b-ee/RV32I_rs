@@ -9,6 +9,12 @@ pub struct Rv32iAlu {
     pub o_alu_add: u32,
 }
 
+impl Default for Rv32iAlu {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(dead_code)]
 impl Rv32iAlu {
     pub fn new() -> Rv32iAlu {

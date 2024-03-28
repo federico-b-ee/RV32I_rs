@@ -26,6 +26,12 @@ pub struct Rv32iIsa {
     pub o_funct7: u8,
 }
 
+impl Default for Rv32iIsa {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
 #[allow(dead_code)]
 impl Rv32iIsa {
     pub fn new(instruction: u32) -> Rv32iIsa {
