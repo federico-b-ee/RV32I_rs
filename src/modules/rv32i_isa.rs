@@ -1,6 +1,6 @@
 use crate::modules::utils;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum InstrType {
     AluRtype,
     AluItype,
@@ -40,7 +40,7 @@ impl Rv32iIsa {
             o_funct7: 0,
         }
     }
-    fn parse_instr(&mut self) {
+    pub fn parse_instr(&mut self) {
         let bits_instruction = utils::u32_to_bitvec(self.i_instruction);
 
         match utils::bitvec_to_u32(&bits_instruction[0..=6]) {
