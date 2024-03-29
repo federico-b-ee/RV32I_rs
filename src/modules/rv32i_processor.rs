@@ -15,6 +15,7 @@ pub struct Rv32iProcessor {
     alu: rv32i_alu::Rv32iAlu,
 }
 
+pub const STATE_LEN: u32 = 3;
 #[derive(Default)]
 enum State {
     #[default]
@@ -89,14 +90,15 @@ impl Rv32iProcessor {
 
                 let loadstore_addr_bytes = utils::u32_to_bitvec(loadstore_addr);
 
+                let loadstore_addr = loadstore_addr / 4;
+
                 let funct3_bytes = utils::u32_to_bitvec(self.isa.o_funct3 as u32);
                 // funct3_bytes[0..=1] == 0b00
                 let en_byte = matches!(self.isa.o_funct3, 0x0 | 0x4);
                 // funct3_bytes[0..=1] == 0b01
                 let en_hw = matches!(self.isa.o_funct3, 0x1 | 0x5);
 
-                // placeholder for memory
-                let memory = &utils::u32_to_bitvec(2);
+                let memory = &utils::u32_to_bitvec(self.memory[(loadstore_addr) as usize]);
 
                 let load_h = if loadstore_addr_bytes[1] == 1 {
                     &memory[16..=31]
@@ -132,7 +134,66 @@ impl Rv32iProcessor {
                     utils::bitvec_to_u32(&memory[0..=31])
                 };
 
-                let write_data = match self.isa.o_instrtype {
+                // Store
+                let store_data = if self.isa.o_instrtype == InstrType::StoreStype {
+                    let rs2_bytes = utils::u32_to_bitvec(self.registers[self.isa.o_rs2 as usize]);
+                    let mut bitvec = Vec::new();
+                    bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                    if loadstore_addr_bytes[0] == 1 {
+                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                    } else {
+                        bitvec.extend_from_slice(&rs2_bytes[8..=15]);
+                    }
+                    if loadstore_addr_bytes[1] == 1 {
+                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                    } else {
+                        bitvec.extend_from_slice(&rs2_bytes[16..=23]);
+                    }
+                    if loadstore_addr_bytes[0] == 1 {
+                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                    } else if loadstore_addr_bytes[1] == 1 {
+                        bitvec.extend_from_slice(&rs2_bytes[8..=15]);
+                    } else {
+                        bitvec.extend_from_slice(&rs2_bytes[24..=31]);
+                    }
+                    utils::bitvec_to_u32(&bitvec)
+                } else {
+                    0
+                };
+
+                let store_mask: u32 = if self.isa.o_instrtype == InstrType::StoreStype {
+                    if en_byte {
+                        if loadstore_addr_bytes[1] == 1 {
+                            if loadstore_addr_bytes[0] == 1 {
+                                0xFF00_0000
+                            } else {
+                                0x00FF_0000
+                            }
+                        } else if loadstore_addr_bytes[0] == 1 {
+                            0x0000_FF00
+                        } else {
+                            0x000_00FF
+                        }
+                    } else if en_hw {
+                        if loadstore_addr_bytes[1] == 1 {
+                            0xFFFF_0000
+                        } else {
+                            0x0000_FFFF
+                        }
+                    } else {
+                        0xFFFF_FFFF
+                    }
+                } else {
+                    0
+                };
+
+                if self.isa.o_instrtype == InstrType::StoreStype {
+                    let mut mem = self.memory[loadstore_addr as usize];
+                    mem |= store_mask & store_data;
+                    self.memory[loadstore_addr as usize] = mem;
+                }
+
+                let write_destination_register = match self.isa.o_instrtype {
                     InstrType::JalJtype | InstrType::JalrItype => self.pc.wrapping_add(4),
                     InstrType::LuiUtype => self.isa.o_imm,
                     InstrType::AuipcUtype => self.pc.wrapping_add(self.isa.o_imm),
@@ -142,11 +203,10 @@ impl Rv32iProcessor {
                 };
 
                 if self.isa.o_rd as usize != 0
-                    && self.isa.o_instrtype != InstrType::StoreStype
-                    && self.isa.o_instrtype != InstrType::BranchBtype
-                    && self.isa.o_instrtype != InstrType::LoadItype
+                    && InstrType::StoreStype != self.isa.o_instrtype
+                    && InstrType::BranchBtype != self.isa.o_instrtype
                 {
-                    self.registers[self.isa.o_rd as usize] = write_data;
+                    self.registers[self.isa.o_rd as usize] = write_destination_register;
                 }
                 self.state = State::Fetch;
             }
@@ -159,24 +219,59 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_exec() {
+    fn test_alu() {
         // addi x1, x0, 5
         // addi x2, x0, 12
         // add x3, x1, x2
         let program = vec![0x00500093, 0x00c00113, 0x002081b3];
         let n_instr = program.len() as u32;
-        let memory = vec![0x00000000];
+        let memory = vec![0; 1024];
         let mut processor = Rv32iProcessor::new(program, memory);
 
         for i in 0..n_instr {
-            for _ in 0..4 {
+            for _ in 0..STATE_LEN {
                 processor.exec();
             }
             assert_eq!(processor.pc, (i + 1) * 4);
         }
-        print!("Registers: {:?}", processor.registers);
         assert_eq!(processor.registers[3], 17);
-        println!("pc in hex: {:x}", processor.pc);
-        println!("pc in hex: 0X{:08X}", processor.pc);
+    }
+
+    #[test]
+    fn test_load_store() {
+        // addi x1, x0, 5
+        // addi x2, x0, 10
+        // addi x3, x0, 0
+        // sb x1, 0(x3)
+        // sb x2, 1(x3)
+        // lb x4, 0(x3)
+        // lb x5, 1(x3)
+        // add x6, x4, x5
+        let program = vec![
+            0x00500093, // addi x1, x0, 5
+            0x00a00113, // addi x2, x0, 10
+            0x00000193, // addi x3, x0, 0
+            0x00118023, // sb x1, 0(x3)
+            0x002180a3, // sb x2, 1(x3)
+            0x00018203, // lb x4, 0(x3)
+            0x00118283, // lb x5, 1(x3)
+            0x00520333, // add x6, x4, x5
+            0x00118123, // sb x1, 2(x3)
+            0x001181a3, // sb x1, 3(x3)
+            0x00118223, // sb x1, 4(x3)
+            0x0001a383, // lw x7, 0(x3)
+        ];
+        let n_instr = program.len() as u32;
+        let memory = vec![0; 1024];
+        let mut processor = Rv32iProcessor::new(program, memory);
+
+        for i in 0..n_instr {
+            for _ in 0..STATE_LEN {
+                processor.exec();
+            }
+            assert_eq!(processor.pc, (i + 1) * 4);
+        }
+        assert_eq!(processor.registers[6], 15);
+        assert_eq!(processor.registers[7], 0x0505_0A05);
     }
 }
