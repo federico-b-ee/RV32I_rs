@@ -85,113 +85,121 @@ impl Rv32iProcessor {
                 }
             }
             State::EndInstr => {
-                let loadstore_addr =
-                    self.registers[self.isa.o_rs1 as usize].wrapping_add(self.isa.o_imm);
+                let load_data = if InstrType::LoadItype == self.isa.o_instrtype
+                    || InstrType::StoreStype == self.isa.o_instrtype
+                {
+                    let loadstore_addr =
+                        self.registers[self.isa.o_rs1 as usize].wrapping_add(self.isa.o_imm);
 
-                let loadstore_addr_bytes = utils::u32_to_bitvec(loadstore_addr);
+                    let loadstore_addr_bytes = utils::u32_to_bitvec(loadstore_addr);
 
-                let loadstore_addr = loadstore_addr / 4;
+                    let loadstore_addr = loadstore_addr / 4;
 
-                let funct3_bytes = utils::u32_to_bitvec(self.isa.o_funct3 as u32);
-                // funct3_bytes[0..=1] == 0b00
-                let en_byte = matches!(self.isa.o_funct3, 0x0 | 0x4);
-                // funct3_bytes[0..=1] == 0b01
-                let en_hw = matches!(self.isa.o_funct3, 0x1 | 0x5);
+                    let funct3_bytes = utils::u32_to_bitvec(self.isa.o_funct3 as u32);
+                    // funct3_bytes[0..=1] == 0b00
+                    let en_byte = matches!(self.isa.o_funct3, 0x0 | 0x4);
+                    // funct3_bytes[0..=1] == 0b01
+                    let en_hw = matches!(self.isa.o_funct3, 0x1 | 0x5);
 
-                let memory = &utils::u32_to_bitvec(self.memory[(loadstore_addr) as usize]);
+                    let memory = &utils::u32_to_bitvec(self.memory[(loadstore_addr) as usize]);
 
-                let load_h = if loadstore_addr_bytes[1] == 1 {
-                    &memory[16..=31]
-                } else {
-                    &memory[0..=15]
-                };
-                let load_b = if loadstore_addr_bytes[0] == 1 {
-                    &load_h[8..=15]
-                } else {
-                    &memory[0..=7]
-                };
-
-                let load_sign = funct3_bytes[1] == 0
-                    && (if en_byte {
-                        load_b[7] == 1
+                    let load_h = if loadstore_addr_bytes[1] == 1 {
+                        &memory[16..=31]
                     } else {
-                        load_h[15] == 1
-                    });
-
-                let load_data = if en_byte {
-                    let mut bitvec = Vec::new();
-                    bitvec.extend_from_slice(load_b);
-                    bitvec.extend_from_slice(&[load_sign as u8; 24]);
-
-                    utils::bitvec_to_u32(&bitvec)
-                } else if en_hw {
-                    let mut bitvec = Vec::new();
-                    bitvec.extend_from_slice(load_h);
-                    bitvec.extend_from_slice(&[load_sign as u8; 16]);
-
-                    utils::bitvec_to_u32(&bitvec)
-                } else {
-                    utils::bitvec_to_u32(&memory[0..=31])
-                };
-
-                // Store
-                let store_data = if self.isa.o_instrtype == InstrType::StoreStype {
-                    let rs2_bytes = utils::u32_to_bitvec(self.registers[self.isa.o_rs2 as usize]);
-                    let mut bitvec = Vec::new();
-                    bitvec.extend_from_slice(&rs2_bytes[0..=7]);
-                    if loadstore_addr_bytes[0] == 1 {
-                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                        &memory[0..=15]
+                    };
+                    let load_b = if loadstore_addr_bytes[0] == 1 {
+                        &load_h[8..=15]
                     } else {
-                        bitvec.extend_from_slice(&rs2_bytes[8..=15]);
-                    }
-                    if loadstore_addr_bytes[1] == 1 {
-                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
-                    } else {
-                        bitvec.extend_from_slice(&rs2_bytes[16..=23]);
-                    }
-                    if loadstore_addr_bytes[0] == 1 {
-                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
-                    } else if loadstore_addr_bytes[1] == 1 {
-                        bitvec.extend_from_slice(&rs2_bytes[8..=15]);
-                    } else {
-                        bitvec.extend_from_slice(&rs2_bytes[24..=31]);
-                    }
-                    utils::bitvec_to_u32(&bitvec)
-                } else {
-                    0
-                };
+                        &memory[0..=7]
+                    };
 
-                let store_mask: u32 = if self.isa.o_instrtype == InstrType::StoreStype {
-                    if en_byte {
-                        if loadstore_addr_bytes[1] == 1 {
-                            if loadstore_addr_bytes[0] == 1 {
-                                0xFF00_0000
-                            } else {
-                                0x00FF_0000
-                            }
-                        } else if loadstore_addr_bytes[0] == 1 {
-                            0x0000_FF00
+                    let load_sign = funct3_bytes[1] == 0
+                        && (if en_byte {
+                            load_b[7] == 1
                         } else {
-                            0x000_00FF
-                        }
+                            load_h[15] == 1
+                        });
+
+                    let load_data = if en_byte {
+                        let mut bitvec = Vec::new();
+                        bitvec.extend_from_slice(load_b);
+                        bitvec.extend_from_slice(&[load_sign as u8; 24]);
+
+                        utils::bitvec_to_u32(&bitvec)
                     } else if en_hw {
-                        if loadstore_addr_bytes[1] == 1 {
-                            0xFFFF_0000
+                        let mut bitvec = Vec::new();
+                        bitvec.extend_from_slice(load_h);
+                        bitvec.extend_from_slice(&[load_sign as u8; 16]);
+
+                        utils::bitvec_to_u32(&bitvec)
+                    } else {
+                        utils::bitvec_to_u32(&memory[0..=31])
+                    };
+
+                    // Store
+                    let store_data = if self.isa.o_instrtype == InstrType::StoreStype {
+                        let rs2_bytes =
+                            utils::u32_to_bitvec(self.registers[self.isa.o_rs2 as usize]);
+                        let mut bitvec = Vec::new();
+                        bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                        if loadstore_addr_bytes[0] == 1 {
+                            bitvec.extend_from_slice(&rs2_bytes[0..=7]);
                         } else {
-                            0x0000_FFFF
+                            bitvec.extend_from_slice(&rs2_bytes[8..=15]);
+                        }
+                        if loadstore_addr_bytes[1] == 1 {
+                            bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                        } else {
+                            bitvec.extend_from_slice(&rs2_bytes[16..=23]);
+                        }
+                        if loadstore_addr_bytes[0] == 1 {
+                            bitvec.extend_from_slice(&rs2_bytes[0..=7]);
+                        } else if loadstore_addr_bytes[1] == 1 {
+                            bitvec.extend_from_slice(&rs2_bytes[8..=15]);
+                        } else {
+                            bitvec.extend_from_slice(&rs2_bytes[24..=31]);
+                        }
+                        utils::bitvec_to_u32(&bitvec)
+                    } else {
+                        0
+                    };
+
+                    let store_mask: u32 = if self.isa.o_instrtype == InstrType::StoreStype {
+                        if en_byte {
+                            if loadstore_addr_bytes[1] == 1 {
+                                if loadstore_addr_bytes[0] == 1 {
+                                    0xFF00_0000
+                                } else {
+                                    0x00FF_0000
+                                }
+                            } else if loadstore_addr_bytes[0] == 1 {
+                                0x0000_FF00
+                            } else {
+                                0x000_00FF
+                            }
+                        } else if en_hw {
+                            if loadstore_addr_bytes[1] == 1 {
+                                0xFFFF_0000
+                            } else {
+                                0x0000_FFFF
+                            }
+                        } else {
+                            0xFFFF_FFFF
                         }
                     } else {
-                        0xFFFF_FFFF
+                        0
+                    };
+
+                    if self.isa.o_instrtype == InstrType::StoreStype {
+                        let mut mem = self.memory[loadstore_addr as usize];
+                        mem |= store_mask & store_data;
+                        self.memory[loadstore_addr as usize] = mem;
                     }
+                    load_data
                 } else {
                     0
                 };
-
-                if self.isa.o_instrtype == InstrType::StoreStype {
-                    let mut mem = self.memory[loadstore_addr as usize];
-                    mem |= store_mask & store_data;
-                    self.memory[loadstore_addr as usize] = mem;
-                }
 
                 let write_destination_register = match self.isa.o_instrtype {
                     InstrType::JalJtype | InstrType::JalrItype => self.pc.wrapping_add(4),
@@ -239,14 +247,6 @@ mod tests {
 
     #[test]
     fn test_load_store() {
-        // addi x1, x0, 5
-        // addi x2, x0, 10
-        // addi x3, x0, 0
-        // sb x1, 0(x3)
-        // sb x2, 1(x3)
-        // lb x4, 0(x3)
-        // lb x5, 1(x3)
-        // add x6, x4, x5
         let program = vec![
             0x00500093, // addi x1, x0, 5
             0x00a00113, // addi x2, x0, 10
@@ -273,5 +273,25 @@ mod tests {
         }
         assert_eq!(processor.registers[6], 15);
         assert_eq!(processor.registers[7], 0x0505_0A05);
+    }
+
+    #[test]
+    fn test_branch() {
+        let program = vec![
+            0x00f00193, // addi x3, x0, 15
+            0x00108093, // addi x1, x1, 1
+            0xfe309ee3, // bne x1, x3, -4
+        ];
+        let n_instr = program.len() as u32;
+        let memory = vec![0; 1024];
+        let mut processor = Rv32iProcessor::new(program, memory);
+
+        for _ in 0..n_instr * 10 {
+            for _ in 0..STATE_LEN {
+                processor.exec();
+            }
+        }
+        println!("{:X}", processor.pc);
+        assert_eq!(processor.registers[1], 15); // Check that counter reached 15
     }
 }
