@@ -145,6 +145,14 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_imm_jalr() {
+        // jalr x5, 12(x0)
+        let instr = 0x00c002e7;
+        let bits = utils::u32_to_bitvec(instr);
+        assert_eq!(Rv32iIsa::parse_imm_itype(&bits), 12u32);
+    }
+
+    #[test]
     fn test_parse_imm_stype() {
         // sw x5, 88(x2)
         let instr: u32 = 0x04512c23;

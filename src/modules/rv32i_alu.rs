@@ -43,9 +43,20 @@ impl Rv32iAlu {
         let alu_add = self.i_in1.wrapping_add(self.i_in2);
         let alu_sub = self.i_in1.wrapping_sub(self.i_in2);
 
+        self.o_eq = self.i_in1 == self.i_in2;
+        self.o_lt = (self.i_in1 as i32) < (self.i_in2 as i32);
+        self.o_ltu = self.i_in1 < self.i_in2;
+        self.o_alu_add = alu_add;
+
         let mut zeroes = vec![0; 31];
         match funct3 {
-            0x0 => self.o_out = if funct7 == 0x20 { alu_sub } else { alu_add },
+            0x0 => {
+                self.o_out = if (funct7 == 0x20) && (instr_bits[5] == 1) {
+                    alu_sub
+                } else {
+                    alu_add
+                }
+            }
             0x1 => self.o_out = self.i_in1 << shamt,
             0x2 => {
                 self.o_out = {
@@ -75,11 +86,6 @@ impl Rv32iAlu {
             0x7 => self.o_out = self.i_in1 & self.i_in2,
             _ => self.o_out = 0,
         }
-
-        self.o_eq = self.i_in1 == self.i_in2;
-        self.o_lt = (self.i_in1 as i32) < (self.i_in2 as i32);
-        self.o_ltu = self.i_in1 < self.i_in2;
-        self.o_alu_add = alu_add;
     }
 }
 
@@ -138,6 +144,22 @@ mod tests {
         assert!(!alu.o_ltu);
 
         alu.exec((-2i32) as u32, 4, 0x0, 0x00, 0x0000_0000);
+        assert!(alu.o_lt);
+    }
+
+    #[test]
+    fn test_sltu_slt() {
+        let mut alu = Rv32iAlu::new();
+
+        // Test case 1
+        let in1: u32 = -1i32 as u32;
+        let in2: u32 = 5;
+        alu.exec(in1, in2, 0x3, 0x00, 0x0000_0000);
+        assert!(!alu.o_ltu);
+
+        // Test case 2
+        // slt x1, x2, x3
+        alu.exec(in1, in2, 0x2, 0x00, 0x0000_0000);
         assert!(alu.o_lt);
     }
 }
