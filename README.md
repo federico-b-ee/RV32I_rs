@@ -43,7 +43,7 @@ This implementation offers flexibility in creating a "cpu" instance. You can eit
 
 ## Improvements
 
-The linker script generates a `memory map`. In this memory scheme, the processor perceives the "program" (or ROM) and the "memory" (or RAM) as the same physical hardware. However, this is not always the case. In fact, this implementation separates the program and the memory.
+The linker script(at `example/riscv_asm/link.x`) generates a `memory map`. In this memory scheme, the processor perceives the "program" (or ROM) and the "memory" (or RAM) as the same physical hardware. However, this is not always the case. In fact, this implementation separates the program and the memory.
 
 The memory map, as defined by the linker script, allocates 2K for the program and 1K for the RAM, resulting in a contiguous 3K in total. Consequently, the memory must be a `Vec<u32>` with 3K positions. However, the actual data is stored starting from `mem[2048..]`.
 
