@@ -11,7 +11,7 @@ BIN_NAME = riscv_asm
 # Build target
 
 
-build_elf: clean 
+build_elf: clean_build_elf
 	cd example/riscv_asm && \
 	cargo build --bin $(BIN_NAME) && \
 	cp $(OUT_DIR)/$(TARGET)/debug/$(BIN_NAME) ../$(BIN_NAME).elf && \
