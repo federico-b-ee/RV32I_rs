@@ -1,13 +1,12 @@
-# RV32I_rs
+<h1 align="center">RV32I_rs 🦀</h1>
 
-- [RV32I\_rs](#rv32i_rs)
-  - [What?](#what)
-  - [Why \& Who?](#why--who)
-  - [How?](#how)
-  - [Improvements](#improvements)
-  - [Resources](#resources)
-    - [Linker Script](#linker-script)
-    - [Useful tools](#useful-tools)
+<div align="center">
+
+[What?](#what) - [Why \& Who?](#why--who) - [How?](#how)
+
+[Improvements](#improvements) - [Resources](#resources)
+
+</div>
 
 ## What?
 
