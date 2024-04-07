@@ -3,6 +3,9 @@ use crate::modules::rv32i_isa;
 use crate::modules::utils;
 
 use super::rv32i_isa::InstrType;
+
+use object::{Object, ObjectSection};
+use std::fs;
 #[allow(dead_code)]
 #[derive(Default)]
 pub struct Rv32iProcessor {
@@ -24,6 +27,60 @@ impl Rv32iProcessor {
             pc: 0,
             ..Default::default()
         }
+    }
+
+    pub fn new_from_elf(elf_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let binary_data = fs::read(elf_path)?;
+        let file = object::File::parse(&*binary_data)?;
+        let mut data_section: &[u8] = &[0u8];
+        let mut text_section: &[u8] = &[0u8];
+        for section in file.sections() {
+            match section.name().unwrap() {
+                ".text" => {
+                    text_section = section.data()?;
+                }
+                ".data" => {
+                    data_section = section.data()?;
+                }
+                _ => {}
+            }
+        }
+        let mut memory_elf = Vec::new();
+        for i in (0..data_section.len()).step_by(4) {
+            let word = u32::from_le_bytes([
+                data_section[i],
+                data_section[i + 1],
+                data_section[i + 2],
+                data_section[i + 3],
+            ]);
+            memory_elf.push(word);
+        }
+        let mut program_elf = Vec::new();
+        for i in (0..text_section.len()).step_by(4) {
+            let word = u32::from_le_bytes([
+                text_section[i],
+                text_section[i + 1],
+                text_section[i + 2],
+                text_section[i + 3],
+            ]);
+            program_elf.push(word);
+        }
+
+        // This part is important, since the linker script used configures the memory as 3 pages of 1024 words each.
+        // Being a contiguous memory, we need to allocate a vector with the size of 3 * 1024 words.
+        // The program has a length of 2K and the memory initial state has a length of 1K.
+        // The sp is initialized to 3072 (3K), and it grows downwards to 2048 (2K).
+        let mut memory_map = vec![0; 1024 * 3];
+        memory_map[2048..2048 + memory_elf.len()].copy_from_slice(&memory_elf);
+        memory_map[..program_elf.len()].copy_from_slice(&program_elf);
+
+        Ok(Self {
+            registers: vec![0; 32],
+            pc: 0,
+            program: memory_map[..2048].to_vec(),
+            memory: memory_map,
+            ..Default::default()
+        })
     }
 
     pub fn exec(&mut self) {
