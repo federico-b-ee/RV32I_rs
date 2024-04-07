@@ -37,5 +37,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Finally, the program loads two global variables and stores them in registers x25 and x26.
     assert_eq!(777u32, cpu.registers[25]);
     assert_eq!(1737u32, cpu.registers[26]);
+    println!("Demo successful!");
     Ok(())
 }
