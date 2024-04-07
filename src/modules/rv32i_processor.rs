@@ -84,13 +84,13 @@ impl Rv32iProcessor {
     }
 
     pub fn exec(&mut self) {
-        //State::Fetch => {
+        // Fetch
         // This div_ceil is a function that divides the pc by 4 and rounds up
         // May cause bugs if pc is not a multiple of 4
         self.isa.i_instruction = self.program[(self.pc.div_ceil(4)) as usize];
         self.isa.parse_instr();
 
-        //State::Execute => {
+        // Execute
         let in2 = if self.isa.o_instrtype == rv32i_isa::InstrType::AluRtype
             || self.isa.o_instrtype == rv32i_isa::InstrType::BranchBtype
         {
@@ -107,7 +107,7 @@ impl Rv32iProcessor {
             self.isa.i_instruction,
         );
 
-        //State::EndInstr => {
+        // EndInstr
         let load_data = if InstrType::LoadItype == self.isa.o_instrtype
             || InstrType::StoreStype == self.isa.o_instrtype
         {
